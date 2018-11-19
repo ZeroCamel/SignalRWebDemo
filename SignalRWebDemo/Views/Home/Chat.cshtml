@@ -1,0 +1,57 @@
+﻿
+@{
+    ViewBag.Title = "SignalRChatRoom";
+}
+
+<h2>Chat</h2>
+
+<div class="container">
+    <input type="text" id="message" />
+    <input type="button" id="sendMsg" value="Send" />
+    <input type="hidden" id="displayName" />
+    <ul id="messageBox"></ul>
+</div>
+
+@section scripts
+{
+    <script src="~/Scripts/jquery.signalR-2.3.0.js"></script>
+    <script src="~/Signalr/hubs"></script>
+    <script>
+        $(function () {
+
+            //!!如果不定义HubName方法和类名第一个都要小写
+
+            //$.connection引用自动生成的集线器代理
+            var chat = $.connection.serverHub;
+            chat.client.SendMessage = function (name, message) {
+                $('#messageBox').append('<li><strong style="color:green">' + name + '</strong>:' + message + '</li>');
+            }
+
+            //设置焦点至输入框
+            $('#message').focus();
+
+            //开始连接服务器-程序开始的时候就已经和Signalr服务器建立连接
+            //done 连接成功向服务器发送成功的函数回调
+            $.connection.hub.start().done(function () {
+
+                $('#sendMsg').click(function () {
+
+                    //调用集线器的Send方法
+                    chat.server.sendMsg($('#message').val());
+
+                    //清空输入框并获取焦点
+                    $('#message').val('').focus();
+
+                });
+
+            });
+        });
+
+        //为显示的消息进行HTML编码
+        function htmlEncode(value)
+        {
+            var encodeValue = $('</div>').text(value).html();
+            return encodeValue;
+        }
+    </script>
+}

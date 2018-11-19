@@ -1,0 +1,104 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>ASP.NET SignalR Stock Ticker</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+            font-size: 16px;
+        }
+
+        #stockTable table {
+            border-collapse: collapse;
+        }
+
+            #stockTable table th, #stockTable table td {
+                padding: 2px 6px;
+            }
+
+            #stockTable table td {
+                text-align: right;
+            }
+
+        #stockTable .loading td {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>ASP.NET SignalR Stock Ticker Sample</h1>
+
+    <h2>Live Stock Table</h2>
+    <div id="stockTable">
+        <table border="1">
+            <thead>
+                <tr><th>Symbol</th><th>Price</th><th>Open</th><th>Change</th><th>%</th></tr>
+            </thead>
+            <tbody>
+                <tr class="loading"><td colspan="5">loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+
+@section scripts
+{
+    <script src="~/Scripts/jquery.signalR-2.3.0.js"></script>
+    <script src="~/Signalr/hubs"></script>
+
+    <script>
+        if (!String.prototype.supplant) {
+            String.prototype.supplant = function (o) {
+                return this.replace(/{([^{}]*)}/g,
+                    function (a, b) {
+                        var r = o[b];
+                        return typeof r === 'string' || typeof r === 'number' ? r : a;
+                    }
+                );
+            };
+        };
+
+        $(function () {
+
+            var ticker = $.connection.stockTickerMini,
+                up = '▲',
+                down = '▼',
+                $stockTable = $('#stockTable'),
+                $stockTableBody = $stockTable.find('tbody'),
+                rowTemplate = '<tr data-symbol="{Symbol}"><td>{Symbol}</td><td>{Price}</td><td>{DayOpen}</td><td>{Direction} {Change}</td><td>{PercentChange}</td></tr>';
+
+            function formatStock(stock) {
+                return $.extend(stock, {
+                    Price: stock.Price.toFixed(2),
+                    PercentChange: (stock.PercentChange * 100).toFixed(2) + '%',
+                    Direction: stock.Change === 0 ? '' : stock.Change >= 0 ? up : down
+                });
+            }
+
+            function init() {
+                //建立连接成功后走的代码
+                ticker.server.getAllStocks().done(function (stocks) {
+                    $stockTableBody.empty();
+                    $.each(stocks, function () {
+                        var stock = formatStock(this);
+                        $stockTableBody.append(rowTemplate.supplant(stock));
+                    });
+                });
+            }
+
+
+            ticker.client.updateStockPrice = function (stock) {
+                var displayStock = formatStock(stock),
+                    $row = $(rowTemplate.supplant(displayStock));
+
+                $stockTableBody.find('tr[data-symbol=' + stock.Symbol + ']')
+                    .replaceWith($row);
+            }
+
+            //连接成功后开始执行初始化
+            $.connection.hub.start().done(init);
+
+        });
+    </script>
+}
